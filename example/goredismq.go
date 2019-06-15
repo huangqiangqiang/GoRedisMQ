@@ -1,7 +1,7 @@
 package main
 
 import (
-	MQ "GoRedisMQ"
+	MQ "github.com/huangqiangqiang/GoRedisMQ"
 )
 
 func main() {
