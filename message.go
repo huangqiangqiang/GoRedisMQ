@@ -18,6 +18,6 @@ func NewMessage(body map[string]interface{}) *Message {
 	return &Message{
 		ID:        fmt.Sprintf("go_redis_mq_%v", msgID),
 		Body:      body,
-		Timestamp: time.Now().UnixNano(),
+		Timestamp: time.Now().Unix(),
 	}
 }

@@ -37,23 +37,20 @@ func (t *Topic) PutMessage(msg *Message) error {
 func (t *Topic) messagePump() {
 	go func() {
 		var msg *Message
-		var chans []*Channel
-		for _, c := range t.channelMap {
-			chans = append(chans, c)
-		}
 		for {
 			select {
 			case msg = <-t.memoryMsgChan:
 			}
-			for _, channel := range chans {
+			for _, channel := range t.channelMap {
 				channel.PutMessage(msg)
 			}
 		}
 	}()
 }
 
-func (t *Topic) GetChannel(channelName string) *Channel {
+func (t *Topic) GetChannel() *Channel {
 	t.Lock()
+	channelName := fmt.Sprintf("%d", len(t.channelMap))
 	channel, isNew := t.getOrCreateChannel(channelName)
 	t.Unlock()
 	if isNew {

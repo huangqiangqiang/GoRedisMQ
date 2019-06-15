@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"crypto/tls"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -33,6 +32,7 @@ func main() {
 }
 
 func NewConsumer(redisAddr string, queueName string) *Consumer {
+	fmt.Printf("redisAddr: %s, queueName: %s\n", redisAddr, queueName)
 	return &Consumer{
 		redisAddr: redisAddr,
 		queueName: queueName,
@@ -101,11 +101,12 @@ func (c *Consumer) consume(deliveries <-chan []byte) error {
 		case msg := <-deliveries:
 			// 处理单个任务
 			var msgMap map[string]interface{}
-			decoder := json.NewDecoder(bytes.NewReader(msg))
-			decoder.UseNumber()
-			if err := decoder.Decode(&msgMap); err != nil {
-				return errors.New("Could Not Unmarsha Task Signature")
-			}
+			// decoder := json.NewDecoder(bytes.NewReader(msg))
+			// decoder.UseNumber()
+			// if err := decoder.Decode(&msgMap); err != nil {
+			// 	return errors.New("Could Not Unmarsha Task Signature")
+			// }
+			json.Unmarshal(msg, &msgMap)
 			fmt.Printf("[Consumer] receive message:%#v\n", msgMap)
 		}
 	}

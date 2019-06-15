@@ -58,8 +58,8 @@ func (b *Broker) GetAllChannels() {
 }
 
 func (b *Broker) Publish(queueName string, msg *Message) error {
-	// 序列化数据
-	m, err := json.Marshal(msg.Body)
+	// 转成 json 字符串
+	m, err := json.Marshal(msg)
 	if err != nil {
 		return fmt.Errorf("JSON marshal error: %s", err)
 	}
@@ -68,7 +68,7 @@ func (b *Broker) Publish(queueName string, msg *Message) error {
 	defer conn.Close()
 	// 发布task到redis
 	// RPUSH 将msg插入到 taskqueue_tasks 队列的尾部
-	_, err = conn.Do("RPUSH", queueName, m)
+	_, err = conn.Do("RPUSH", queueName, string(m))
 	return err
 }
 

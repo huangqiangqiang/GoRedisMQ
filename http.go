@@ -24,7 +24,7 @@ func StartHTTPServer(cnf *Config) error {
 	app.Post("/pub", s.doPub)
 	app.Post("/sub", s.doSub)
 	app.Get("/lookup", s.doLookUp)
-	app.Run(iris.Addr(":7890"))
+	app.Run(iris.Addr(fmt.Sprintf(":%s", cnf.HttpServerPort)))
 	return nil
 }
 
@@ -48,7 +48,7 @@ func (s *httpServer) doSub(ctx iris.Context) {
 	// 2. 从 topicName 获取 topic 对象
 	topic := s.broker.GetTopicFromName(topicName)
 	// 3. 获取或创建一个 channel
-	c := topic.GetChannel("1111")
+	c := topic.GetChannel()
 	ctx.JSON(iris.Map{
 		"status":     "OK",
 		"redis_addr": s.broker.cnf.Broker,
