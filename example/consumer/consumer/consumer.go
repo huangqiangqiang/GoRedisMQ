@@ -1,16 +1,12 @@
-package main
+package consumer
 
 import (
-	"bytes"
-	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
-	"net/http"
 	"sync"
-	"time"
 
 	"github.com/gomodule/redigo/redis"
+	"github.com/huangqiangqiang/GoRedisMQ/example/consumer/util"
 )
 
 type Consumer struct {
@@ -21,16 +17,6 @@ type Consumer struct {
 	stopReceivingChan chan int
 }
 
-func main() {
-	response, err := POST("http://localhost:7890/sub?topic=test", nil)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	client := NewConsumer(response["redis_addr"].(string), response["queue_name"].(string))
-	client.StartConsuming()
-}
-
 func NewConsumer(redisAddr string, queueName string) *Consumer {
 	fmt.Printf("redisAddr: %s, queueName: %s\n", redisAddr, queueName)
 	return &Consumer{
@@ -39,39 +25,12 @@ func NewConsumer(redisAddr string, queueName string) *Consumer {
 	}
 }
 
-func POST(url string, params interface{}) (map[string]interface{}, error) {
-	paramsByte, err := json.Marshal(params)
-	if err != nil {
-		return nil, err
-	}
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: true,
-		},
-	}
-	// client将不再对服务端的证书进行校验
-	client := &http.Client{Transport: tr}
-	res, err := client.Post(url, "application/json;charset=utf-8", bytes.NewBuffer(paramsByte))
-	if err != nil {
-		return nil, err
-	}
-	defer res.Body.Close()
-	content, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return nil, err
-	}
-	var response map[string]interface{}
-	json.Unmarshal(content, &response)
-	return response, nil
-}
-
 func (c *Consumer) StartConsuming() error {
 	c.stopReceivingChan = make(chan int)
 	pool := make(chan struct{}, 1)
 	deliveries := make(chan []byte)
 	pool <- struct{}{}
 	go func() {
-
 		for {
 			select {
 			case <-c.stopReceivingChan:
@@ -101,13 +60,9 @@ func (c *Consumer) consume(deliveries <-chan []byte) error {
 		case msg := <-deliveries:
 			// 处理单个任务
 			var msgMap map[string]interface{}
-			// decoder := json.NewDecoder(bytes.NewReader(msg))
-			// decoder.UseNumber()
-			// if err := decoder.Decode(&msgMap); err != nil {
-			// 	return errors.New("Could Not Unmarsha Task Signature")
-			// }
 			json.Unmarshal(msg, &msgMap)
 			fmt.Printf("[Consumer] receive message:%#v\n", msgMap)
+			c.ConsumeOne(msgMap)
 		}
 	}
 }
@@ -138,28 +93,7 @@ func (c *Consumer) nextMessage(queue string) (result []byte, err error) {
 // 链接redis
 func (c *Consumer) open() redis.Conn {
 	c.redisOnce.Do(func() {
-		c.pool = NewPool(c.redisAddr)
+		c.pool = util.NewPool(c.redisAddr)
 	})
 	return c.pool.Get()
-}
-
-// 返回redis连接池
-func NewPool(url string) *redis.Pool {
-	return &redis.Pool{
-		Dial: func() (redis.Conn, error) {
-			c, err := redis.DialURL(url)
-			if err != nil {
-				return nil, err
-			}
-			return c, err
-		},
-		// PINGs connections that have been idle more than 10 seconds
-		TestOnBorrow: func(c redis.Conn, t time.Time) error {
-			if time.Since(t) < time.Duration(10*time.Second) {
-				return nil
-			}
-			_, err := c.Do("PING")
-			return err
-		},
-	}
 }
