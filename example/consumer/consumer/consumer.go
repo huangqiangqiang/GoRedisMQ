@@ -61,8 +61,17 @@ func (c *Consumer) consume(deliveries <-chan []byte) error {
 			// 处理单个任务
 			var msgMap map[string]interface{}
 			json.Unmarshal(msg, &msgMap)
-			fmt.Printf("[Consumer] receive message:%#v\n", msgMap)
-			c.ConsumeOne(msgMap)
+			fmt.Printf("[Consumer] receive message id: %#v\n", msgMap)
+			isDone := c.ConsumeOne(msgMap)
+			if isDone {
+				params := map[string]interface{}{
+					"topic":  "test",
+					"name":   "consumer1",
+					"msg_id": msgMap["ID"],
+				}
+				response, _ := util.Post("http://localhost:7890/ack", params)
+				fmt.Printf("[Consumer] ACK: %s\n", response["msg_id"].(string))
+			}
 		}
 	}
 }

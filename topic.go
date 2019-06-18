@@ -6,20 +6,21 @@ import (
 )
 
 type Topic struct {
+	cnf           *Config
 	Name          string
 	memoryMsgChan chan *Message
 	channelMap    map[string]*Channel
 	broker        *Broker
+	backend       *Backend
 
 	sync.RWMutex
 }
 
-func NewTopic(topicName string, broker *Broker) *Topic {
+func NewTopic(topicName string) *Topic {
 	t := &Topic{
 		Name:          topicName,
 		memoryMsgChan: make(chan *Message),
 		channelMap:    make(map[string]*Channel),
-		broker:        broker,
 	}
 	// 启动
 	t.messagePump()
@@ -42,15 +43,19 @@ func (t *Topic) messagePump() {
 			case msg = <-t.memoryMsgChan:
 			}
 			for _, channel := range t.channelMap {
-				channel.PutMessage(msg)
+				newMsg := NewMessage(msg.Body, t.cnf)
+				newMsg.Topic = msg.Topic
+				newMsg.RetryCount = msg.RetryCount
+				newMsg.RetryTimeout = msg.RetryTimeout
+				newMsg.Channel = channel.Name
+				channel.PutMessage(newMsg, StatePending)
 			}
 		}
 	}()
 }
 
-func (t *Topic) GetChannel() *Channel {
+func (t *Topic) GetChannel(channelName string) *Channel {
 	t.Lock()
-	channelName := fmt.Sprintf("%d", len(t.channelMap))
 	channel, isNew := t.getOrCreateChannel(channelName)
 	t.Unlock()
 	if isNew {
@@ -62,7 +67,7 @@ func (t *Topic) GetChannel() *Channel {
 func (t *Topic) getOrCreateChannel(channelName string) (*Channel, bool) {
 	channel, ok := t.channelMap[channelName]
 	if !ok {
-		channel = NewChannel(t.Name, channelName, t.broker)
+		channel = NewChannel(t.Name, channelName, t.broker, t.backend)
 		t.channelMap[channelName] = channel
 		fmt.Printf("[GoRedisMQ] Topic(%s): new channel(%s)\n", t.Name, channel.Name)
 		return channel, true

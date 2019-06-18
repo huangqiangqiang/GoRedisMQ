@@ -31,7 +31,7 @@ func (b *Backend) connect() error {
 	}
 	// fmt.Printf("[TaskQueue] backend %s connect success.\n", b.cnf.Backend)
 	b.client = client
-	databaseName := "messagequeue"
+	databaseName := "go_redis_mq"
 	collectionName := "mq"
 	b.mqCollection = client.DB(databaseName).C(collectionName)
 	collectionName = "producers"
@@ -54,31 +54,33 @@ func (b *Backend) AddProducer(p *Producer) error {
 	return err
 }
 
-func (b *Backend) GetState(taskUUID string) {
-
+func (b *Backend) GetMessage(msgId string) (*Message, error) {
+	var msg *Message
+	err := b.mqCollection.Find(bson.M{"_id": msgId}).One(&msg)
+	if err != nil {
+		return nil, err
+	}
+	return msg, nil
 }
 
 func (b *Backend) SetStatePending(msg *Message) error {
 	update := bson.M{
-		"state":      StatePending,
-		"body":       msg.Body,
-		"created_at": msg.Timestamp,
+		"state":         StatePending,
+		"topic":         msg.Topic,
+		"channel":       msg.Channel,
+		"body":          msg.Body,
+		"created_at":    msg.CreatedAt,
+		"retry_count":   msg.RetryCount,
+		"retry_timeout": msg.RetryTimeout,
 	}
 	return b.updateState(msg, update)
 }
 
-func (b *Backend) SetStateReceived(msg *Message) error {
-	update := bson.M{"state": StateReceived}
-	return b.updateState(msg, update)
-}
-
-func (b *Backend) SetStateStarted(msg *Message) error {
-	update := bson.M{"state": StateStarted}
-	return b.updateState(msg, update)
-}
-
 func (b *Backend) SetStateRetry(msg *Message) error {
-	update := bson.M{"state": StateRetry}
+	update := bson.M{
+		"state":       StateRetry,
+		"retry_count": msg.RetryCount,
+	}
 	return b.updateState(msg, update)
 }
 
@@ -91,7 +93,10 @@ func (b *Backend) SetStateSuccess(msg *Message, results []interface{}) error {
 }
 
 func (b *Backend) SetStateFailure(msg *Message, err string) error {
-	update := bson.M{"state": StateFailure}
+	update := bson.M{
+		"state":  StateFailure,
+		"errmsg": err,
+	}
 	return b.updateState(msg, update)
 }
 

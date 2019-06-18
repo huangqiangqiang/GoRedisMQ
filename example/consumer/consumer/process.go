@@ -1,5 +1,6 @@
 package consumer
 
-func (c *Consumer) ConsumeOne(msg map[string]interface{}) {
+func (c *Consumer) ConsumeOne(msg map[string]interface{}) bool {
 	// TODO
+	return true
 }

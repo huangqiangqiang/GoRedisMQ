@@ -8,7 +8,10 @@ import (
 )
 
 func main() {
-	response, err := util.Post("http://localhost:7890/sub?topic=test", nil)
+	response, err := util.Post("http://localhost:7890/sub", map[string]interface{}{
+		"topic": "test",
+		"name":  "consumer1",
+	})
 	if err != nil {
 		fmt.Println(err)
 		return

@@ -17,44 +17,12 @@ type Broker struct {
 	redisConn         redis.Conn
 	redisOnce         sync.Once
 	stopReceivingChan chan int
-
-	topicMap map[string]*Topic
-	sync.RWMutex
 }
 
 func NewBroker(cnf *Config) *Broker {
 	b := &Broker{}
 	b.cnf = cnf
-	b.topicMap = make(map[string]*Topic)
 	return b
-}
-
-func (b *Broker) GetTopicFromName(topicName string) *Topic {
-	b.Lock()
-	t, ok := b.topicMap[topicName]
-	b.Unlock()
-	if ok {
-		return t
-	}
-	// 如果没有topic，则创建一个
-	t = NewTopic(topicName, b)
-	b.Lock()
-	b.topicMap[topicName] = t
-	b.Unlock()
-	fmt.Printf("[GoRedisMQ] Topic(%s): created\n", t.Name)
-	return t
-}
-
-func (b *Broker) GetAllTopics() []*Topic {
-	var topics = make([]*Topic, 0)
-	for _, topic := range b.topicMap {
-		topics = append(topics, topic)
-	}
-	return topics
-}
-
-func (b *Broker) GetAllChannels() {
-
 }
 
 func (b *Broker) Publish(queueName string, msg *Message) error {
@@ -70,6 +38,57 @@ func (b *Broker) Publish(queueName string, msg *Message) error {
 	// RPUSH 将msg插入到 taskqueue_tasks 队列的尾部
 	_, err = conn.Do("RPUSH", queueName, string(m))
 	return err
+}
+
+// 监听需要重试的 message
+func (b *Broker) ListenRetryMessageId(bakQueueName string, handleNeedRetryMsg func(string)) {
+	go func() {
+		for {
+			var msgId string
+			select {
+			default:
+				msgId = b.nextRetryMessageId(bakQueueName)
+				if msgId != "" {
+					handleNeedRetryMsg(msgId)
+				}
+			}
+		}
+	}()
+}
+
+func (b *Broker) nextRetryMessageId(key string) string {
+	conn := b.open()
+	defer conn.Close()
+	for {
+		// 1秒执行1次
+		time.Sleep(time.Duration(1) * time.Second)
+		now := time.Now().UnixNano()
+		items, err := redis.ByteSlices(conn.Do("ZRANGEBYSCORE", key, 0, now, "LIMIT", 0, 1))
+		if err != nil {
+			return ""
+		}
+		if len(items) != 1 {
+			err = redis.ErrNil
+			return ""
+		}
+		_ = conn.Send("ZREM", key, items[0])
+		return string(items[0])
+	}
+}
+
+func (b *Broker) Bak2retry(queueName string, msg *Message) error {
+	// 获取redis链接
+	conn := b.open()
+	defer conn.Close()
+	score := time.Now().Add(time.Second * time.Duration(msg.RetryTimeout)).UnixNano()
+	_, err := conn.Do("ZADD", queueName, score, msg.ID)
+	return err
+}
+
+func (b *Broker) Remove(queueName string, msg *Message) {
+	conn := b.open()
+	defer conn.Close()
+	conn.Do("ZREM", queueName, msg.ID)
 }
 
 // 链接redis
