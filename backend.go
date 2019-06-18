@@ -79,7 +79,7 @@ func (b *Backend) GetMessage(msgId string) (*Message, error) {
 	return msg, nil
 }
 
-func (b *Backend) SetStatePending(msg *Message) error {
+func (b *Backend) SetMessagePending(msg *Message) error {
 	update := bson.M{
 		"state":         StatePending,
 		"topic":         msg.Topic,
@@ -92,7 +92,7 @@ func (b *Backend) SetStatePending(msg *Message) error {
 	return b.updateState(msg, update)
 }
 
-func (b *Backend) SetStateRetry(msg *Message) error {
+func (b *Backend) SetMessageRetry(msg *Message) error {
 	update := bson.M{
 		"state":       StateRetry,
 		"retry_count": msg.RetryCount,
@@ -100,7 +100,7 @@ func (b *Backend) SetStateRetry(msg *Message) error {
 	return b.updateState(msg, update)
 }
 
-func (b *Backend) SetStateSuccess(msg *Message, results []interface{}) error {
+func (b *Backend) SetMessageSuccess(msg *Message, results interface{}) error {
 	update := bson.M{
 		"state":   StateSuccess,
 		"results": results,
@@ -108,7 +108,7 @@ func (b *Backend) SetStateSuccess(msg *Message, results []interface{}) error {
 	return b.updateState(msg, update)
 }
 
-func (b *Backend) SetStateFailure(msg *Message, err string) error {
+func (b *Backend) SetMessageFailure(msg *Message, err string) error {
 	update := bson.M{
 		"state":  StateFailure,
 		"errmsg": err,

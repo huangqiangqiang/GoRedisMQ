@@ -112,7 +112,7 @@ func (s *httpServer) doAck(ctx iris.Context) {
 	c := t.GetChannel(channelName)
 
 	// ack
-	c.AckMessage(msgId)
+	c.AckMessage(msgId, params["results"])
 
 	ctx.JSON(iris.Map{
 		"status": "OK",

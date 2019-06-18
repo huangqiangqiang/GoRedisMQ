@@ -7,11 +7,11 @@ import (
 )
 
 type Channel struct {
-	ID        string   `bson:"_id"`
-	TopicName string   `json:"topic_name" bson:"topic_name"`
-	Name      string   `json:"name" bson:"name"` // 消费端的唯一标识
-	broker    *Broker  `bson:"broker"`
-	backend   *Backend `bson:"backend"`
+	ID        string `bson:"_id"`
+	TopicName string `json:"topic_name" bson:"topic_name"`
+	Name      string `json:"name" bson:"name"` // 消费端的唯一标识
+	broker    *Broker
+	backend   *Backend
 }
 
 func NewChannelWithNameAndBrokerBackend(topicName string, name string, broker *Broker, backend *Backend) *Channel {
@@ -42,22 +42,22 @@ func (c *Channel) handleRetryMessage(msgId string) {
 
 func (c *Channel) messageFailed(msg *Message, err string) {
 	fmt.Printf("[GoRedisMQ] message_id: %s failed.\n", msg.ID)
-	c.backend.SetStateFailure(msg, err)
+	c.backend.SetMessageFailure(msg, err)
 }
 
-func (c *Channel) AckMessage(msgId string) {
+func (c *Channel) AckMessage(msgId string, results interface{}) {
 	// redis 备份一份，实现 ack 无响应重试的功能
 	msg, _ := c.backend.GetMessage(msgId)
 	fmt.Printf("[GoRedisMQ] message_id %s success.\n", msg.ID)
 	c.broker.Remove(c.getBakQueueName(), msg)
-	c.backend.SetStateSuccess(msg, nil)
+	c.backend.SetMessageSuccess(msg, results)
 }
 
 func (c *Channel) PutMessage(msg *Message, state string) error {
 	if state == StatePending {
-		c.backend.SetStatePending(msg)
+		c.backend.SetMessagePending(msg)
 	} else {
-		c.backend.SetStateRetry(msg)
+		c.backend.SetMessageRetry(msg)
 	}
 	// redis 备份一份，实现 ack 无响应重试的功能
 	c.broker.Bak2retry(c.getBakQueueName(), msg)

@@ -56,12 +56,14 @@ func (mq *MQ) loadTopics() {
 	channels, _ := mq.backend.GetAllChannels()
 	if len(channels) > 0 {
 		for _, channel := range channels {
+			channel.broker = mq.broker
+			channel.backend = mq.backend
 			topic := topics[channel.TopicName]
 			if topic == nil {
 				topic = NewTopicWithNameAndBrokerBackend(channel.TopicName, mq.cnf, mq.broker, mq.backend)
 				topics[channel.TopicName] = topic
 			}
-			topic.GetChannel(channel.Name)
+			topic.channelMap[channel.Name] = channel
 		}
 	}
 	mq.topicMap = topics

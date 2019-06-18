@@ -62,12 +62,13 @@ func (c *Consumer) consume(deliveries <-chan []byte) error {
 			var msgMap map[string]interface{}
 			json.Unmarshal(msg, &msgMap)
 			fmt.Printf("[Consumer] receive message id: %#v\n", msgMap)
-			isDone := c.ConsumeOne(msgMap)
+			results, isDone := c.ConsumeOne(msgMap)
 			if isDone {
 				params := map[string]interface{}{
-					"topic":  "test",
-					"name":   "consumer1",
-					"msg_id": msgMap["ID"],
+					"topic":   "test",
+					"name":    "consumer1",
+					"msg_id":  msgMap["ID"],
+					"results": results,
 				}
 				response, _ := util.Post("http://localhost:7890/ack", params)
 				fmt.Printf("[Consumer] ACK: %s\n", response["msg_id"].(string))
