@@ -2,17 +2,21 @@ package GoRedisMQ
 
 import (
 	"fmt"
+
+	"github.com/google/uuid"
 )
 
 type Channel struct {
-	TopicName string `json:"topic_name"`
-	Name      string `json:"name"`
-	broker    *Broker
-	backend   *Backend
+	ID        string   `bson:"_id"`
+	TopicName string   `json:"topic_name" bson:"topic_name"`
+	Name      string   `json:"name" bson:"name"` // 消费端的唯一标识
+	broker    *Broker  `bson:"broker"`
+	backend   *Backend `bson:"backend"`
 }
 
-func NewChannel(topicName string, name string, broker *Broker, backend *Backend) *Channel {
+func NewChannelWithNameAndBrokerBackend(topicName string, name string, broker *Broker, backend *Backend) *Channel {
 	c := &Channel{
+		ID:        fmt.Sprintf("channel_%v", uuid.New().String()),
 		TopicName: topicName,
 		Name:      name,
 		broker:    broker,
@@ -37,14 +41,14 @@ func (c *Channel) handleRetryMessage(msgId string) {
 }
 
 func (c *Channel) messageFailed(msg *Message, err string) {
-	fmt.Printf("[GoRedisMQ] message %s failed.\n", msg.ID)
+	fmt.Printf("[GoRedisMQ] message_id: %s failed.\n", msg.ID)
 	c.backend.SetStateFailure(msg, err)
 }
 
 func (c *Channel) AckMessage(msgId string) {
 	// redis 备份一份，实现 ack 无响应重试的功能
 	msg, _ := c.backend.GetMessage(msgId)
-	fmt.Printf("[GoRedisMQ] message %s success.\n", msg.ID)
+	fmt.Printf("[GoRedisMQ] message_id %s success.\n", msg.ID)
 	c.broker.Remove(c.getBakQueueName(), msg)
 	c.backend.SetStateSuccess(msg, nil)
 }

@@ -8,10 +8,11 @@ import (
 )
 
 type Backend struct {
-	cnf          *Config
-	client       *mgo.Session
-	mqCollection *mgo.Collection
-	pCollection  *mgo.Collection
+	cnf               *Config
+	client            *mgo.Session
+	mqCollection      *mgo.Collection
+	pCollection       *mgo.Collection
+	channelCollection *mgo.Collection
 }
 
 func NewBackend(cnf *Config) (*Backend, error) {
@@ -32,10 +33,9 @@ func (b *Backend) connect() error {
 	// fmt.Printf("[TaskQueue] backend %s connect success.\n", b.cnf.Backend)
 	b.client = client
 	databaseName := "go_redis_mq"
-	collectionName := "mq"
-	b.mqCollection = client.DB(databaseName).C(collectionName)
-	collectionName = "producers"
-	b.pCollection = b.client.DB(databaseName).C(collectionName)
+	b.mqCollection = client.DB(databaseName).C("messages")
+	b.pCollection = b.client.DB(databaseName).C("producers")
+	b.channelCollection = b.client.DB(databaseName).C("channels")
 	return nil
 }
 
@@ -52,6 +52,22 @@ func (b *Backend) FindProducers() ([]*Producer, error) {
 func (b *Backend) AddProducer(p *Producer) error {
 	err := b.pCollection.Insert(p)
 	return err
+}
+
+func (b *Backend) AddChannel(c *Channel) error {
+	update := bson.M{
+		"topic_name": c.TopicName,
+		"name":       c.Name,
+	}
+	update = bson.M{"$set": update}
+	_, err := b.channelCollection.Upsert(bson.M{"_id": c.ID}, update)
+	return err
+}
+
+func (b *Backend) GetAllChannels() ([]*Channel, error) {
+	var results []*Channel
+	err := b.channelCollection.Find(nil).All(&results)
+	return results, err
 }
 
 func (b *Backend) GetMessage(msgId string) (*Message, error) {

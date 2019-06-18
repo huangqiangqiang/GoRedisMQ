@@ -22,7 +22,7 @@ func NewMessage(body map[string]interface{}, cnf *Config) *Message {
 	retryCount := cnf.DefaultRetryCount
 	retryTimeout := cnf.DefaultRetryTimeout
 	return &Message{
-		ID:        fmt.Sprintf("go_redis_mq_%v", msgID),
+		ID:        fmt.Sprintf("message_%v", msgID),
 		Body:      body,
 		CreatedAt: time.Now().Unix(),
 		// RetryTimeout 秒后未收到 ack 就判定为超时，如果是noack模式，设置为0

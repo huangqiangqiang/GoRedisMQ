@@ -16,11 +16,20 @@ type Topic struct {
 	sync.RWMutex
 }
 
-func NewTopic(topicName string) *Topic {
+// func NewTopic(topicName string, cnf *Config) *Topic {
+// 	broker := NewBroker(cnf)
+// 	backend, _ := NewBackend(cnf)
+// 	return NewTopicWithNameAndBrokerBackend(topicName, cnf, broker, backend)
+// }
+
+func NewTopicWithNameAndBrokerBackend(topicName string, cnf *Config, broker *Broker, backend *Backend) *Topic {
 	t := &Topic{
+		cnf:           cnf,
 		Name:          topicName,
 		memoryMsgChan: make(chan *Message),
 		channelMap:    make(map[string]*Channel),
+		broker:        broker,
+		backend:       backend,
 	}
 	// 启动
 	t.messagePump()
@@ -67,7 +76,7 @@ func (t *Topic) GetChannel(channelName string) *Channel {
 func (t *Topic) getOrCreateChannel(channelName string) (*Channel, bool) {
 	channel, ok := t.channelMap[channelName]
 	if !ok {
-		channel = NewChannel(t.Name, channelName, t.broker, t.backend)
+		channel = NewChannelWithNameAndBrokerBackend(t.Name, channelName, t.broker, t.backend)
 		t.channelMap[channelName] = channel
 		fmt.Printf("[GoRedisMQ] Topic(%s): new channel(%s)\n", t.Name, channel.Name)
 		return channel, true

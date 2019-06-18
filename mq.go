@@ -15,8 +15,7 @@ type MQ struct {
 
 func NewMQ(cnf *Config) (*MQ, error) {
 	mq := &MQ{
-		cnf:      cnf,
-		topicMap: make(map[string]*Topic),
+		cnf: cnf,
 	}
 	broker := NewBroker(cnf)
 	backend, err := NewBackend(cnf)
@@ -25,6 +24,7 @@ func NewMQ(cnf *Config) (*MQ, error) {
 	}
 	mq.broker = broker
 	mq.backend = backend
+	mq.loadTopics()
 	return mq, nil
 }
 
@@ -36,7 +36,7 @@ func (mq *MQ) GetTopicFromName(topicName string) *Topic {
 		return t
 	}
 	// 如果没有topic，则创建一个
-	t = NewTopic(topicName)
+	t = NewTopicWithNameAndBrokerBackend(topicName, mq.cnf, mq.broker, mq.backend)
 	t.cnf = mq.cnf
 	t.broker = mq.broker
 	t.backend = mq.backend
@@ -45,4 +45,24 @@ func (mq *MQ) GetTopicFromName(topicName string) *Topic {
 	mq.Unlock()
 	fmt.Printf("[GoRedisMQ] Topic(%s): created\n", t.Name)
 	return t
+}
+
+func (mq *MQ) SaveChannel(c *Channel) {
+	mq.backend.AddChannel(c)
+}
+
+func (mq *MQ) loadTopics() {
+	topics := make(map[string]*Topic, 0)
+	channels, _ := mq.backend.GetAllChannels()
+	if len(channels) > 0 {
+		for _, channel := range channels {
+			topic := topics[channel.TopicName]
+			if topic == nil {
+				topic = NewTopicWithNameAndBrokerBackend(channel.TopicName, mq.cnf, mq.broker, mq.backend)
+				topics[channel.TopicName] = topic
+			}
+			topic.GetChannel(channel.Name)
+		}
+	}
+	mq.topicMap = topics
 }

@@ -85,6 +85,7 @@ func (s *httpServer) doSub(ctx iris.Context) {
 	// 这里用 consumer name 作为 channelName
 	channelName := consumerName
 	c := topic.GetChannel(channelName)
+	mq.SaveChannel(c)
 	ctx.JSON(iris.Map{
 		"status":     "OK",
 		"redis_addr": mq.broker.cnf.Broker,
