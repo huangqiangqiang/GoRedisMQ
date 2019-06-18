@@ -1,5 +1,9 @@
 # GoRedisMQ
-go语言实现基于redis的消息中间件（目前只是demo）
+目前只是demo
+
+go语言实现基于redis的消息中间件
+
+支持PUB/SUB和消息重试
 
 # 使用
 本地先启动`mongodb`和`redis`服务，配置在`example/goredismq.go`
