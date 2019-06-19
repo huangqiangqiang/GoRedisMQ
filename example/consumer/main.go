@@ -3,8 +3,8 @@ package main
 import (
 	"fmt"
 
-	"github.com/huangqiangqiang/GoRedisMQ/example/consumer/consumer"
-	"github.com/huangqiangqiang/GoRedisMQ/example/consumer/util"
+	"github.com/huangqiangqiang/goredismq/example/consumer/consumer"
+	"github.com/huangqiangqiang/goredismq/example/consumer/util"
 )
 
 func main() {

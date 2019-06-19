@@ -1,4 +1,4 @@
-package GoRedisMQ
+package goredismq
 
 type Producer struct {
 	RemoteAddress string   `json:"remote_address"`

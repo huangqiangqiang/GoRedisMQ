@@ -6,7 +6,7 @@ import (
 	"sync"
 
 	"github.com/gomodule/redigo/redis"
-	"github.com/huangqiangqiang/GoRedisMQ/example/consumer/util"
+	"github.com/huangqiangqiang/goredismq/example/consumer/util"
 )
 
 type Consumer struct {

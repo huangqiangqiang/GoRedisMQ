@@ -1,4 +1,4 @@
-package GoRedisMQ
+package goredismq
 
 import (
 	"encoding/json"

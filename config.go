@@ -1,4 +1,4 @@
-package GoRedisMQ
+package goredismq
 
 type Config struct {
 	HttpServerPort string
